@@ -16,14 +16,14 @@ async fn main() -> windows::core::Result<()> {
         // Data Length:
         0x15,
         // Proximity UUID:
-        0xE3, 0x0A, 0xC8, 0xFE,
-        0x75, 0xB8, 0x47, 0x21,
-        0x4B, 0x5D, 0x56, 0xB7, 
-        0x07, 0x64, 0x25, 0xA9,
+        0x9b, 0xCE, 0x37, 0xD2,
+        0xAC, 0x85, 0x4E, 0x7E,
+        0x83, 0x96, 0xF2, 0x23, 
+        0x3A, 0xF7, 0x45, 0x81,
         // Major:
-        0x00, 0x02,
+        0x00, 0x0A,
         // Minor:
-        0x00, 0x03,
+        0x00, 0x28,
         // TX Power:
         0xC8
     ];
@@ -32,10 +32,10 @@ async fn main() -> windows::core::Result<()> {
     writer.WriteBytes(&data)?;
 
     let buffer = writer.DetachBuffer()?;
-    manufacturer_data.SetData(buffer)?;
+    manufacturer_data.SetData(&buffer)?;
 
     let publisher = BluetoothLEAdvertisementPublisher::new()?;
-    publisher.Advertisement()?.ManufacturerData()?.Append(manufacturer_data)?;
+    publisher.Advertisement()?.ManufacturerData()?.Append(&manufacturer_data)?;
     publisher.Start()?;
 
     print_data(&data);
@@ -64,15 +64,12 @@ async fn main() -> windows::core::Result<()> {
 
 fn print_data(data: &[u8]) {
     if data[0] == 0x02 && data[1] == 0x15 && data.len() == 23 {
-        let uuid_string = match Uuid::from_fields(
+        let uuid_string = Uuid::from_fields(
             u32::from_be_bytes([data[2], data[3], data[4], data[5]]),
             u16::from_be_bytes([data[6], data[7]]),
             u16::from_be_bytes([data[8], data[9]]),
-            &data[10 .. 18]
-        ) {
-            Ok(uuid) => uuid.to_string(),
-            Err(_) => "".to_string()
-        };
+            &data[10 .. 18].try_into().unwrap()
+        ).hyphenated().to_string();
 
         let major = u16::from_be_bytes([data[18], data[19]]);
         let minor = u16::from_be_bytes([data[20], data[21]]);
